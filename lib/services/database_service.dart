@@ -11,7 +11,7 @@ class DatabaseService {
 
   Stream<List<SOSRequest>> get sosRequests {
     return rtdb.ref('sos_requests').onValue.map((event) {
-      if (event.snapshot.value == null) return [];
+      if (event.snapshot.value == null) return <SOSRequest>[];
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
       List<SOSRequest> requests = [];
       data.forEach((key, value) {
@@ -22,7 +22,7 @@ class DatabaseService {
       });
       requests.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return requests;
-    });
+    }).asBroadcastStream();
   }
 
   Future<void> resolveSOS(String id) async {
@@ -34,7 +34,7 @@ class DatabaseService {
     return rtdb.ref('system_config/danger_signal/level').onValue.map((event) {
       if (event.snapshot.value == null) return 1;
       return (event.snapshot.value as num).toInt();
-    });
+    }).asBroadcastStream();
   }
 
   Future<void> updateSignalLevel(int level) async {
@@ -51,7 +51,7 @@ class DatabaseService {
 
   Stream<List<Map<String, dynamic>>> get broadcasts {
     return rtdb.ref('broadcasts').limitToLast(10).onValue.map((event) {
-      if (event.snapshot.value == null) return [];
+      if (event.snapshot.value == null) return <Map<String, dynamic>>[];
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
       List<Map<String, dynamic>> items = [];
       data.forEach((key, value) {
@@ -61,7 +61,7 @@ class DatabaseService {
       });
       items.sort((a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int));
       return items;
-    });
+    }).asBroadcastStream();
   }
 
   // --- Shelters ---
@@ -82,7 +82,6 @@ class DatabaseService {
     return items;
   }
 
-
   Future<void> deleteShelter(String id) async {
     await rtdb.ref('shelters/$id').remove();
   }
@@ -91,10 +90,9 @@ class DatabaseService {
     await rtdb.ref('shelters/$id').update({'status': status});
   }
 
-
   Stream<List<Map<String, dynamic>>> get shelters {
     return rtdb.ref('shelters').onValue.map((event) {
-      if (event.snapshot.value == null) return [];
+      if (event.snapshot.value == null) return <Map<String, dynamic>>[];
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
       List<Map<String, dynamic>> items = [];
       data.forEach((key, value) {
@@ -103,6 +101,6 @@ class DatabaseService {
         items.add(map);
       });
       return items;
-    });
+    }).asBroadcastStream();
   }
 }
