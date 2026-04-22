@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class SOSRequest {
   final String id;
   final String uid;
@@ -8,6 +6,7 @@ class SOSRequest {
   final double longitude;
   final DateTime timestamp;
   final bool resolved;
+  final String disasterType;
 
   SOSRequest({
     this.id = '',
@@ -17,6 +16,7 @@ class SOSRequest {
     required this.longitude,
     required this.timestamp,
     this.resolved = false,
+    this.disasterType = 'General',
   });
 
   Map<String, dynamic> toMap() {
@@ -25,21 +25,22 @@ class SOSRequest {
       'name': name,
       'latitude': latitude,
       'longitude': longitude,
-      'timestamp': timestamp,
+      'timestamp': timestamp.millisecondsSinceEpoch,
       'resolved': resolved,
+      'disasterType': disasterType,
     };
   }
 
-  factory SOSRequest.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map;
+  factory SOSRequest.fromMap(String id, Map<String, dynamic> data) {
     return SOSRequest(
-      id: doc.id,
+      id: id,
       uid: data['uid'] ?? '',
       name: data['name'] ?? '',
       latitude: (data['latitude'] ?? 0).toDouble(),
       longitude: (data['longitude'] ?? 0).toDouble(),
-      timestamp: (data['timestamp'] as Timestamp).toDate(),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp'] ?? 0),
       resolved: data['resolved'] ?? false,
+      disasterType: data['disasterType'] ?? 'General',
     );
   }
 }

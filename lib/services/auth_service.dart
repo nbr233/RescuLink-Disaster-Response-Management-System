@@ -1,10 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../main.dart';
 import '../models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Stream of user changes
   Stream<User?> get user => _auth.authStateChanges();
@@ -22,17 +21,26 @@ class AuthService {
         password: password,
       );
       User? user = result.user;
-
       if (user != null) {
-        UserModel userModel = UserModel(
-          uid: user.uid,
-          email: email,
-          name: name,
-          role: role,
-        );
-        await _db.collection('users').doc(user.uid).set(userModel.toMap());
+        await rtdb.ref('users/${user.uid}').set({
+          'uid': user.uid,
+          'email': email,
+          'name': name,
+          'role': role,
+        });
       }
-      return null; // Success
+      return null;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          return 'This email is already registered.';
+        case 'weak-password':
+          return 'Password is too weak.';
+        case 'invalid-email':
+          return 'Invalid email address.';
+        default:
+          return e.message ?? 'Sign up failed.';
+      }
     } catch (e) {
       return e.toString();
     }
@@ -43,21 +51,37 @@ class AuthService {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       return null;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          return 'No account found with this email.';
+        case 'wrong-password':
+          return 'Wrong password.';
+        case 'invalid-credential':
+          return 'Invalid email or password.';
+        default:
+          return e.message ?? 'Login failed.';
+      }
     } catch (e) {
       return e.toString();
     }
   }
 
   // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
+  Future<void> signOut() async => await _auth.signOut();
 
   // Get user data
   Future<UserModel?> getUserData(String uid) async {
-    DocumentSnapshot doc = await _db.collection('users').doc(uid).get();
-    if (doc.exists) {
-      return UserModel.fromMap(doc.data() as Map<String, dynamic>);
+    try {
+      final snapshot = await rtdb.ref('users/$uid').get()
+          .timeout(const Duration(seconds: 5));
+      if (snapshot.exists) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        return UserModel.fromMap(data);
+      }
+    } catch (e) {
+      // Timeout or DB error — return null so Wrapper defaults to UserDashboard
+      return null;
     }
     return null;
   }

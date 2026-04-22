@@ -12,26 +12,26 @@ class PulseAnimation extends StatefulWidget {
 
 class _PulseAnimationState extends State<PulseAnimation> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
+  late Animation<double> _opacityAnim;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _opacityAnim = Tween<double>(begin: 0.0, end: 0.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
-    _animation = Tween<double>(begin: 0.0, end: 10.0).animate(_controller);
     if (widget.active) _controller.repeat(reverse: true);
   }
 
   @override
   void didUpdateWidget(PulseAnimation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active) {
+    if (widget.active && !_controller.isAnimating) {
       _controller.repeat(reverse: true);
-    } else {
+    } else if (!widget.active) {
       _controller.stop();
+      _controller.reset();
     }
   }
 
@@ -43,24 +43,21 @@ class _PulseAnimationState extends State<PulseAnimation> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            boxShadow: widget.active
-                ? [
-                    BoxShadow(
-                      color: Colors.red.withOpacity(0.3),
-                      blurRadius: _animation.value * 2,
-                      spreadRadius: _animation.value,
-                    )
-                  ]
-                : [],
+    return Stack(
+      children: [
+        widget.child,
+        if (widget.active)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _opacityAnim,
+                builder: (_, __) => Container(
+                  color: Colors.red.withOpacity(_opacityAnim.value),
+                ),
+              ),
+            ),
           ),
-          child: widget.child,
-        );
-      },
+      ],
     );
   }
 }
